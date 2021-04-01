@@ -137,7 +137,26 @@ def depthFirstSearch(problem):
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    myqueue = util.Queue()
+    startNode = (problem.getStartState(), '', 0, [])
+    myqueue.push(startNode)
+    visited = set()
+    while myqueue:
+        node = myqueue.pop()
+        state, action, cost, path = node
+        if state not in visited:
+            visited.add(state)
+            if problem.isGoalState(state):
+                path = path + [(state, action)]
+                break;
+            succNodes = problem.expand(state)
+            for succNode in succNodes:
+                succState, succAction, succCost = succNode
+                newNode = (succState, succAction, cost + succCost, path + [(state, action)])
+                myqueue.push(newNode)
+    actions = [action[1] for action in path]
+    del actions[0]
+    return actions
 
 def nullHeuristic(state, problem=None):
     """
@@ -150,14 +169,71 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     #COMP90054 Task 1, Implement your A Star search algorithm here
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-
+    mypriorityqueue = util.PriorityQueue()
+    startNode = (problem.getStartState(), '', 0, [])
+    startpriority = heuristic(problem.getStartState(), problem)
+    mypriorityqueue.push(startNode, startpriority)
+    visited = set()
+    while mypriorityqueue:
+        node = mypriorityqueue.pop()
+        state, action, cost, path = node
+        if state not in visited:
+            visited.add(state)
+            if problem.isGoalState(state):
+                path = path + [(state, action)]
+                break;
+            succNodes = problem.expand(state)
+            for succNode in succNodes:
+                succState, succAction, succCost = succNode
+                priority = cost + succCost + heuristic(succState, problem)
+                newNode = (succState, succAction, cost + succCost, path + [(state, action)])
+                mypriorityqueue.update(newNode, priority)
+    actions = [action[1] for action in path]
+    del actions[0]
+    return actions
         
 def recursivebfs(problem, heuristic=nullHeuristic) :
     #COMP90054 Task 2, Implement your Recursive Best First Search algorithm here
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-    
+    startstate = problem.getStartState()
+    startNode = (startstate, '', 0, [], heuristic(startstate, problem))
+    result, f, actions = RBFS(problem, startNode, float('inf'), heuristic)
+    return actions
+
+def RBFS(problem, node, f_limit, heuristic=nullHeuristic):
+    state, action, cost, path, f = node
+    if problem.isGoalState(state):
+        path = path + [(state, action)]
+        actions = [action[1] for action in path]
+        del actions[0]
+        return True, 0, actions
+    succNodes = problem.expand(state)
+    if len(succNodes) == 0:
+        return False, float('inf'), []
+    successors = []
+    for succNode in succNodes:
+        succState, succAction, succCost = succNode
+        succ_f = cost + succCost + heuristic(succState, problem)
+        newNode = (succState, succAction, cost + succCost, path + [(state, action)], max(succ_f, f))
+        successors.append(newNode)
+
+    while len(successors) >= 2:
+        successors = sorted(successors, key=lambda successor: successor[4])
+        best = list(successors[0])
+        b_state, b_action, b_cost, b_path, best_f = best
+        if best_f > f_limit:
+            return False, best_f, []
+        alternative = list(successors[1])
+        alternative_f = alternative[4]
+        result, current_f, current_actions = RBFS(problem, best, min(f_limit, alternative_f), heuristic)
+        bestNode = (b_state, b_action, b_cost, b_path, current_f)
+        successors[0] = bestNode
+        if result != False:
+            return result, 0, current_actions
+
+    return False, 0, []
+
+
 
     
 # Abbreviations

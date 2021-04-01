@@ -133,19 +133,118 @@ class SearchAgent(Agent):
         else:
             return Directions.STOP
 
-
 class DeceptiveSearchAgentpi2(SearchAgent):
     "Search for all food using a sequence of searches"
     def registerInitialState(self, state):
         #COMP90054 Task 4 - Implement your deceptive search algorithm here
-        util.raiseNotDefined()
-        
+        #get each point's position
+        initalPoint = state.getPacmanPosition()
+        capsulePoint = state.getCapsules()[0]
+        goalPoint = state.getFood().asList()[0]
+
+        #calculate each pair of point's distance
+        a = mazeDistance(initalPoint, goalPoint, state)
+        b = mazeDistance(initalPoint, capsulePoint, state)
+        c = mazeDistance(goalPoint, capsulePoint, state)
+        coefficient = ((c + a - b) // 2) / get_distance(capsulePoint, goalPoint)
+
+        #calculate the target position
+        x1 = int((capsulePoint[0] - goalPoint[0]) * coefficient + goalPoint[0])
+        y1 = int((capsulePoint[1] - goalPoint[1]) * coefficient + goalPoint[1])
+        target = (x1, y1)
+
+        problem1 = PositionSearchProblem(state, start=initalPoint, goal=target, warn=False, visualize=False)
+        problem2 = PositionSearchProblem(state, start=target, goal=goalPoint, warn=False, visualize=False)
+        actions = search.bfs(problem1) + search.bfs(problem2)
+
+        return actions
+
 class DeceptiveSearchAgentpi3(SearchAgent):
     "Search for all food using a sequence of searches"
+
+    def deceptiveHeuristic(self, node, goalPoint, capsulePoint, target, heuristic):
+        """
+        Modified heuristic function to return the estimated cost from node n to target
+
+        node: current position
+        goalPoint: goal position
+        capsulePoint: fake goal position
+        target: mid position
+        heuristic: heuristic function
+        """
+        if heuristic(node, goalPoint) < heuristic(node, capsulePoint):
+            return 2 * heuristic(node, target)
+        else:
+            return heuristic(node, target)
+
     def registerInitialState(self, state):
         #COMP90054 Task 4 - Implement your deceptive search algorithm here
-        util.raiseNotDefined()
- 
+        # get each point's position
+        initalPoint = state.getPacmanPosition()
+        capsulePoint = state.getCapsules()[0]
+        goalPoint = state.getFood().asList()[0]
+
+        a = mazeDistance(initalPoint, goalPoint, state)
+        b = mazeDistance(initalPoint, capsulePoint, state)
+        c = mazeDistance(goalPoint, capsulePoint, state)
+        coefficient = ((c + a - b) // 2) / get_distance(capsulePoint, goalPoint)
+
+        # calculate the target position
+        x1 = int((capsulePoint[0] - goalPoint[0]) * coefficient + goalPoint[0])
+        y1 = int((capsulePoint[1] - goalPoint[1]) * coefficient + goalPoint[1])
+        target = (x1, y1)
+
+        problem1 = PositionSearchProblem(state, start=initalPoint, goal=target, warn=False, visualize=False)
+        problem2 = PositionSearchProblem(state, start=target, goal=goalPoint, warn=False, visualize=False)
+
+        # Astar search from initalState to the target
+        mypriorityqueue1 = util.PriorityQueue()
+        startNode1 = (problem1.getStartState(), '', 0, [])
+        startpriority1 = self.deceptiveHeuristic(initalPoint, goalPoint, capsulePoint, target, util.manhattanDistance)
+        mypriorityqueue1.push(startNode1, startpriority1)
+        visited1 = set()
+        while mypriorityqueue1:
+            node = mypriorityqueue1.pop()
+            state, action, cost, path = node
+            if state not in visited1:
+                visited1.add(state)
+                if problem1.isGoalState(state):
+                    path = path + [(state, action)]
+                    break;
+                succNodes1 = problem1.expand(state)
+                for succNode1 in succNodes1:
+                    succState1, succAction1, succCost1 = succNode1
+                    priority = cost + succCost1 + self.deceptiveHeuristic(succState1, goalPoint, capsulePoint, target, \
+                                                                         util.manhattanDistance)
+                    newNode = (succState1, succAction1, cost + succCost1, path + [(state, action)])
+                    mypriorityqueue1.update(newNode, priority)
+        actions1 = [action[1] for action in path]
+        del actions1[0]
+
+        # Astar search from target to the goal
+        mypriorityqueue2 = util.PriorityQueue()
+        startNode2 = (target, '', 0, [])
+        startpriority2 = util.manhattanDistance(target, goalPoint)
+        mypriorityqueue2.push(startNode2, startpriority2)
+        visited2 = set()
+        while mypriorityqueue2:
+            node = mypriorityqueue2.pop()
+            state, action, cost, path = node
+            if state not in visited2:
+                visited2.add(state)
+                if problem2.isGoalState(state):
+                    path = path + [(state, action)]
+                    break;
+                succNodes2 = problem2.expand(state)
+                for succNode2 in succNodes2:
+                    succState2, succAction2, succCost2 = succNode2
+                    priority = cost + succCost2 + util.manhattanDistance(succState2, goalPoint)
+                    newNode = (succState2, succAction2, cost + succCost2, path + [(state, action)])
+                    mypriorityqueue2.update(newNode, priority)
+        actions2 = [action[1] for action in path]
+        del actions2[0]
+
+        return actions1 + actions2
 
 class PositionSearchProblem(search.SearchProblem):
     """
@@ -509,7 +608,7 @@ class FoodSearchProblem:
             dx, dy = Actions.directionToVector(action)
             x, y = int(x + dx), int(y + dy)
             if self.walls[x][y]:
-                return 999999         
+                return 999999
             position = x,y
             if( position in capsules):
                 capsules.remove(position)
@@ -527,14 +626,14 @@ def get_distance(pos1, pos2):
     x1, y1 = pos1
     x2, y2 = pos2
     return abs(x1-x2) + abs(y1-y2)
-  
+
 def get_min(queue) :
 	cost = 9999999
 	cheapest = -1
 	for index, item in enumerate(queue) :
 		if item[1] < cost :
 			cost = item[1]
-			cheapest = index	
+			cheapest = index
 	cheapestItem = queue[cheapest]
 	del queue[cheapest]
 	return cheapestItem
@@ -563,8 +662,64 @@ def foodHeuristic(state, problem):
     position, foodGrid, capsules = state
     #COMP90054 Task 3, Implement your code here
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-   
+    foodGridList =foodGrid.asList()
+    walls = list(problem.walls)
+
+    if foodGridList:
+        costs = []
+        for i in range(len(foodGridList)):
+            # foodPosition1 = foodGridList[i]
+            # nearbyFoodDis = []
+            # for j in range(len(foodGridList)):
+            #     if j != i:
+            #         foodposition2 = foodGridList[j]
+            #         nearbyFoodDis.append(util.manhattanDistance(foodPosition1, foodposition2))
+            # nearbyFoodDis.sort(reverse=False)
+
+            costs.append(cost_function(position, foodGridList[i], capsules, walls))
+        costs.sort(reverse = True)
+
+        return costs[0]
+    else:
+        return 0
+
+def cost_function(pacmanPosition, foodPosition, capsules, walls):
+    myqueue = util.PriorityQueue()
+    startNode = (pacmanPosition, '', 0)
+    myqueue.push(startNode, 0)
+    visited = set()
+    while myqueue:
+        node = myqueue.pop()
+        state, action, cost = node
+        if state not in visited:
+            visited.add(state)
+            if state == foodPosition:
+                break;
+            succNodes = expandNode(state, capsules, walls)
+            for succNode in succNodes:
+                succState, succAction, succCost = succNode
+                totalcost = cost + succCost
+                newNode = (succState, succAction, totalcost)
+                myqueue.push(newNode, totalcost)
+
+    return cost
+
+def expandNode(state, capsuples, walls):
+    directions = [Directions.NORTH, Directions.SOUTH, Directions.WEST, Directions.EAST]
+    succState = []
+    for action in directions:
+        x1, y1 = state
+        dx, dy = Actions.directionToVector(action)
+        x2, y2 = int(x1 + dx), int(y1 + dy)
+        if not walls[x2][y2]:
+            succPosition = (x2, y2)
+            if succPosition in capsuples:
+                succCost = 0
+            else:
+                succCost = 1
+            succState.append((succPosition, action, succCost))
+
+    return succState
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
