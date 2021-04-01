@@ -668,14 +668,6 @@ def foodHeuristic(state, problem):
     if foodGridList:
         costs = []
         for i in range(len(foodGridList)):
-            # foodPosition1 = foodGridList[i]
-            # nearbyFoodDis = []
-            # for j in range(len(foodGridList)):
-            #     if j != i:
-            #         foodposition2 = foodGridList[j]
-            #         nearbyFoodDis.append(util.manhattanDistance(foodPosition1, foodposition2))
-            # nearbyFoodDis.sort(reverse=False)
-
             costs.append(cost_function(position, foodGridList[i], capsules, walls))
         costs.sort(reverse = True)
 
@@ -709,10 +701,10 @@ def expandNode(state, capsuples, walls):
     succState = []
     for action in directions:
         x1, y1 = state
-        dx, dy = Actions.directionToVector(action)
-        x2, y2 = int(x1 + dx), int(y1 + dy)
+        betax, betay = Actions.directionToVector(action)
+        x2, y2 = int(x1 + betax), int(y1 + betay)
         if not walls[x2][y2]:
-            succPosition = (x2, y2)
+            succPosition = x2, y2
             if succPosition in capsuples:
                 succCost = 0
             else:
