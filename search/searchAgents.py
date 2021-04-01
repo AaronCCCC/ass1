@@ -705,11 +705,12 @@ def expandNode(state, capsuples, walls):
         x2, y2 = int(x1 + betax), int(y1 + betay)
         if not walls[x2][y2]:
             succPosition = x2, y2
-            if succPosition in capsuples:
-                succCost = 0
-            else:
+            if succPosition not in capsuples:
                 succCost = 1
-            succState.append((succPosition, action, succCost))
+            else:
+                succCost = 0
+            newNode = (succPosition, action, succCost)
+            succState.append(newNode)
 
     return succState
 
